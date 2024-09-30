@@ -1,11 +1,17 @@
 #include "mymalloc.h"
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 
 
+#define MEMSIZE 4096 // 4KB
+
+
 void *mymalloc(size_t size, char *file, int line)
 {
+
+
     return nullptr;
 }
 

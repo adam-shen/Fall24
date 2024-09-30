@@ -6,5 +6,8 @@
 
 void *mymalloc(size_t size, char *file, int line);
 void myfree(void *ptr, char *file, int line);
+void leak_checker(void);
+void print_heap(void);
+void intialized(void);
 
 #endif

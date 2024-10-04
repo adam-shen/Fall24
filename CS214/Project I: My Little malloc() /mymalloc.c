@@ -12,9 +12,24 @@ static union{
     double not_used; //makes sure the array is aligned at addresses divisible by 8
 } heap;
 
+struct header {
+    size_t size;     // Size of the entire chunk (header + payload)
+    int allocated;   // 1 if allocated, 0 if free
+};
+
+static int initialized = 0;
+
 void *mymalloc(size_t size, char *file, int line)
 {
+    if (!initialized) {
+    initialize();
+    }
 
+    size = (size + 7) & ~7;
+
+
+
+    fprintf(stderr, "malloc: Unable to allocate %zu bytes (%s:%d)\n", size, file, line);
 
     return NULL;
 }
@@ -32,6 +47,8 @@ void leak_check()
 
 static void intialize(void) {
     
+    initialized = 1;
+
     atexit(lead_check());
     
 }

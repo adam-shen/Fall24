@@ -17,6 +17,8 @@ struct header {
     int allocated;   // 1 if allocated, 0 if free
 };
 
+typedef struct header Header;
+
 static int initialized = 0;
 
 void *mymalloc(size_t size, char *file, int line)
@@ -25,7 +27,8 @@ void *mymalloc(size_t size, char *file, int line)
     initialize();
     }
 
-    size = (size + 7) & ~7;
+    size = (size + 7) & ~7; // Round up to nearest multiple of 8 and adds 8 bytes for the header
+
 
 
 

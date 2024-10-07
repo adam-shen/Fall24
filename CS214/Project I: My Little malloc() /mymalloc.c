@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h> //Msh 3arif law lazem wala la2
 #include "mymalloc.h"
 
 
@@ -27,7 +28,7 @@ void *mymalloc(size_t size, char *file, int line)
     initialize();
     }
 
-    size = (size + 7) & ~7; // Round up to nearest multiple of 8 and adds 8 bytes for the header
+    size = ((size + 7) & ~7) + 8; // Round up to nearest multiple of 8 and adds 8 bytes for the header
 
 
 

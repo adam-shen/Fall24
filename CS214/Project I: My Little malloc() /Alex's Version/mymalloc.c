@@ -67,7 +67,7 @@ void myfree(void *ptr, char *file, int line) {
     // Check if the block is already free (double free detection)
     if (header->allocated == 0) {
         fprintf(stderr, "Double free detected at %s:%d\n", file, line);
-        return;
+        exit(2);  // Terminate the program with exit code 2
     }
 
     // Mark block as free

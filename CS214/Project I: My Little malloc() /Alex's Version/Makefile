@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -std=c99 -Wall -Wvla -fsanitize=address,undefined
-TARGETS = memgrind
+TARGETS = memgrind memtest
 
 all: $(TARGETS)
 
@@ -12,6 +12,12 @@ mymalloc.o: mymalloc.c mymalloc.h
 
 memgrind.o: memgrind.c mymalloc.h
 	$(CC) $(CFLAGS) -c memgrind.c
+
+memtest: memtest.o mymalloc.o
+	$(CC) $(CFLAGS) -o $@ $^
+
+memtest.o: memtest.c mymalloc.h
+	$(CC) $(CFLAGS) -c memtest.c
 
 clean:
 	rm -f *.o $(TARGETS)

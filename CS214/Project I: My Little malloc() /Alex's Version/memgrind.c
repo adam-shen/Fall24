@@ -81,7 +81,7 @@ void task4() {
         }
     }
 
-    // Deallocate all objects
+    // Deallocate all objects.
     for (int i = 0; i < 120; i++) {
         myfree(ptrs[i], __FILE__, __LINE__);
     }

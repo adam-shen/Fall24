@@ -56,7 +56,7 @@ void task3() {
             ptrs[index] = ptrs[--allocated];
             ptrs[allocated] = NULL;  // Set the last pointer to NULL
         }
-        printf("Working here %d\n", i);
+        //printf("Working here %d\n", i);
     }
 
     // Deallocate any remaining allocated objects

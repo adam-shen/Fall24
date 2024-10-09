@@ -37,8 +37,8 @@ void *mymalloc(size_t size, char *file, int line) {
 
     struct header *current = first_header;  // start from the first block
     while ((char *)current < heap.bytes + MEMSIZE) {
-        if (!current->allocated && current->size >= aligned_size) {  // find a free block large enough
-            size_t remaining_size = current->size - aligned_size - sizeof(struct header);
+        if (!current->allocated && current->size >= aligned_size) {  // find a free block large enough, //He was saying to double check this line as it's not able to find a new free block
+            size_t remaining_size = current->size - aligned_size - sizeof(struct header);       
             if (remaining_size > sizeof(struct header)) {  // split block if remaining space is large enough
                 struct header *new_header = (struct header *)((char *)current + sizeof(struct header) + aligned_size);
                 new_header->size = remaining_size;

@@ -38,14 +38,12 @@ void *mymalloc(size_t size, char *file, int line) {
     struct header *current = first_header;  // start from the first block
     while ((char *)current < heap.bytes + MEMSIZE) {
         if (!current->allocated && current->size >= aligned_size) {  // find a free block large enough
-            if (current->size >= aligned_size + sizeof(struct header)) {  // Ensure enough space
-                size_t remaining_size = current->size - aligned_size - sizeof(struct header);
-                if (remaining_size > sizeof(struct header)) {  // split block if remaining space is large enough
-                    struct header *new_header = (struct header *)((char *)current + sizeof(struct header) + aligned_size);
-                    new_header->size = remaining_size;
-                    new_header->allocated = 0;
-                    current->size = aligned_size;
-                }
+            size_t remaining_size = current->size - aligned_size - sizeof(struct header);
+            if (remaining_size > sizeof(struct header)) {  // split block if remaining space is large enough
+                struct header *new_header = (struct header *)((char *)current + sizeof(struct header) + aligned_size);
+                new_header->size = remaining_size;
+                new_header->allocated = 0;
+                current->size = aligned_size;
             }
             current->allocated = 1;  // mark as allocated
             return (void *)((char *)current + sizeof(struct header));  // return pointer to data portion

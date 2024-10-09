@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include "mymalloc.h"
 
-#define MEMSIZE 4096  // 4KB
+#define MEMSIZE 4096 * 4096 // 4MB
 
 static union {
     char bytes[MEMSIZE];
@@ -12,7 +12,7 @@ static union {
 
 struct header {
     size_t size;     // size of the entire chunk (header + payload)
-    int allocated;   // 1 if allocated, 0 if frees
+    int allocated;   // 1 if allocated, 0 if free
 };
 
 static void leak_checker(void);  // forward declaration of leak_checker
@@ -25,6 +25,7 @@ static void initialize_heap(void) {
     first_header->allocated = 0;
     atexit(leak_checker);  // register memory leak checker
     initialized = 1;
+    //printf("Heap initialized. Size of struct header: %zu bytes\n", sizeof(struct header));
 }
 
 void *mymalloc(size_t size, char *file, int line) {
@@ -32,72 +33,66 @@ void *mymalloc(size_t size, char *file, int line) {
         initialize_heap();  // initialize heap
     }
 
-    // align the requested size to 8-byte boundary
     size_t aligned_size = (size + 7) & ~7;
+    struct header *current = first_header;
 
-    struct header *current = first_header;  // start from the first block
     while ((char *)current < heap.bytes + MEMSIZE) {
-        if (!current->allocated && current->size >= aligned_size) {  // find a free block large enough
-            if (current->size >= aligned_size + sizeof(struct header)) {  // Ensure enough space
+        //printf("Inspecting block at %p with size %zu bytes, allocated: %d\n",
+        //       (void *)current, current->size, current->allocated);
+        
+        if (!current->allocated && current->size >= aligned_size) {
+            if (current->size >= aligned_size + sizeof(struct header)) {
                 size_t remaining_size = current->size - aligned_size - sizeof(struct header);
-                if (remaining_size > sizeof(struct header)) {  // split block if remaining space is large enough
+                if (remaining_size > sizeof(struct header)) {
                     struct header *new_header = (struct header *)((char *)current + sizeof(struct header) + aligned_size);
                     new_header->size = remaining_size;
                     new_header->allocated = 0;
                     current->size = aligned_size;
                 }
             }
-            current->allocated = 1;  // mark as allocated
-            return (void *)((char *)current + sizeof(struct header));  // return pointer to data portion
+            current->allocated = 1;
+            return (void *)((char *)current + sizeof(struct header));
         }
-        current = (struct header *)((char *)current + sizeof(struct header) + current->size);  // move to next block
+
+        current = (struct header *)((char *)current + sizeof(struct header) + current->size);
     }
 
-    // if no suitable block found, output error message
     fprintf(stderr, "malloc: Unable to allocate %zu bytes (%s:%d)\n", size, file, line);
     return NULL;
 }
 
 void myfree(void *ptr, char *file, int line) {
     if (ptr == NULL) {
-        return; // Null pointer, nothing to free
+        return;
     }
 
-    // Get the header for the block
     struct header *header = (struct header *)((char *)ptr - sizeof(struct header));
 
-    // Check if the block is already free (double free detection)
     if (header->allocated == 0) {
         fprintf(stderr, "Double free detected at %s:%d\n", file, line);
-        exit(2);  // Terminate the program with exit code 2
+        exit(2);
     }
 
-    // Mark block as free
     header->allocated = 0;
 
-    // Coalesce with the next block if it is free
     struct header *next = (struct header *)((char *)header + sizeof(struct header) + header->size);
     if ((char *)next < heap.bytes + MEMSIZE && next->allocated == 0) {
-        // Merge with the next block
         header->size += sizeof(struct header) + next->size;
     }
 
-    // Coalesce with the previous block if it is free
     struct header *prev = first_header;
-    struct header *prev_block = NULL; // Pointer to store the previous block
+    struct header *prev_block = NULL;
     while ((char *)prev < (char *)header) {
         struct header *next_block = (struct header *)((char *)prev + sizeof(struct header) + prev->size);
         if (next_block == header) {
-            prev_block = prev; // Store the previous block for coalescing
+            prev_block = prev;
             break;
         }
         prev = next_block;
     }
 
-    if (prev_block && prev_block->allocated == 0 && (char *)prev_block + sizeof(struct header) + prev_block->size <= (char *)header) {
-        // Merge with the previous block
+    if (prev_block && prev_block->allocated == 0) {
         prev_block->size += sizeof(struct header) + header->size;
-        header = prev_block; // Update header to the merged block
     }
 }
 

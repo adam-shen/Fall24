@@ -68,70 +68,68 @@ void task3() {
     }
 }
 
-// Task 4: Allocate and deallocate objects of increasing sizes
+// Task 4: Allocate 64 bytes 120 times and free them in reverse order
 void task4() {
     char *ptrs[120];
-
-    // Allocate objects of increasing size (from 1 byte to 120 bytes)
     for (int i = 0; i < 120; i++) {
-        ptrs[i] = (char *)mymalloc(i + 1, __FILE__, __LINE__);  // Allocate i+1 bytes
-        if (ptrs[i] == NULL) {
-            printf("Unable to allocate object %d\n", i);
+        ptrs[i] = (char *) mymalloc(64, __FILE__, __LINE__);
+        // Optionally, check for allocation failure:
+        if (!ptrs[i]) {
+            fprintf(stderr, "Failed to allocate memory in task4\n");
             return;
         }
     }
-
-    // Deallocate all objects.
-    for (int i = 0; i < 120; i++) {
+    // Free in reverse order
+    for (int i = 119; i >= 0; i--) {
         myfree(ptrs[i], __FILE__, __LINE__);
     }
-
-    printf("Task 4 completed: Allocated and deallocated objects of increasing size.\n");
 }
 
-// Task 5: Fragmentation test with random allocations and frees
+// Task 5: Randomly allocate between 1 to 64 bytes and deallocate randomly
 void task5() {
     char *ptrs[120];
+    int sizes[120]; // Store the size of each allocation
     int allocated = 0;
 
-    // Randomly allocate objects of size between 1 and 120 bytes
+    // Initialize pointers and sizes to NULL/0
     for (int i = 0; i < 120; i++) {
-        int size = (rand() % 120) + 1;  // Random size between 1 and 120 bytes
-        ptrs[allocated] = (char *)mymalloc(size, __FILE__, __LINE__);
-        if (ptrs[allocated] == NULL) {
-            printf("Unable to allocate object %d of size %d\n", i, size);
-            return;
-        }
-        allocated++;
+        ptrs[i] = NULL;
+        sizes[i] = 0;
     }
 
-    // Randomly free half of the allocated objects
-    for (int i = 0; i < 60; i++) {
-        int index = rand() % allocated;
-        if (ptrs[index] != NULL) {
-            myfree(ptrs[index], __FILE__, __LINE__);
-            ptrs[index] = NULL;
+    // Perform 240 iterations of random allocation and deallocation
+    for (int i = 0; i < 240; i++) {
+        int action = rand() % 2;
+
+        if (action == 0 && allocated < 120) {
+            // Randomly choose a size between 1 and 64 bytes
+            int size = (rand() % 64) + 1;
+            ptrs[allocated] = (char *) mymalloc(size, __FILE__, __LINE__);
+            // Check for successful allocation
+            if (ptrs[allocated]) {
+                sizes[allocated++] = size;
+            }
+        } else if (action == 1 && allocated > 0) {
+            // Deallocate a randomly chosen object
+            int index = rand() % allocated;
+            
+            if (ptrs[index]) {
+                myfree(ptrs[index], __FILE__, __LINE__);
+                ptrs[index] = NULL;
+            }
+
+            // Move last allocated pointer to fill the gap
+            ptrs[index] = ptrs[--allocated];
+            sizes[index] = sizes[allocated];
         }
     }
 
-    // Allocate new objects after fragmentation
-    for (int i = 0; i < 60; i++) {
-        int size = (rand() % 120) + 1;  // Random size between 1 and 120 bytes
-        ptrs[i] = (char *)mymalloc(size, __FILE__, __LINE__);
-        if (ptrs[i] == NULL) {
-            printf("Unable to allocate object %d after fragmentation\n", i);
-            return;
-        }
-    }
-
-    // Free all remaining objects
-    for (int i = 0; i < 120; i++) {
-        if (ptrs[i] != NULL) {
+    // Deallocate any remaining allocated objects
+    for (int i = 0; i < allocated; i++) {
+        if (ptrs[i]) {
             myfree(ptrs[i], __FILE__, __LINE__);
         }
     }
-
-    printf("Task 5 completed: Fragmentation test with random allocations and frees.\n");
 }
 
 // Main method

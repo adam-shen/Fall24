@@ -4,19 +4,32 @@ netID: yy854
 Name: Adam Elshanawany
 netID: aoe14
 
+Project Title: My Little malloc() - Custom Memory Allocator
+
+Project Overview: This project implements a simplified version of malloc() and free() for managing dynamic memory allocation in C. The custom allocator, named mymalloc, provides mechanisms for requesting and releasing memory within a fixed-size heap, mimicking the behavior of standard dynamic memory functions. This project aims to deepen the understanding of memory management by exploring concepts such as memory alignment, block splitting, and coalescing.
+
+Files Included:
+
+mymalloc.h: Header file containing function declarations and macros.
+malloc.c: The core implementation of mymalloc and myfree functions.
+memtest.c: A test file for validating the behavior and correctness of mymalloc.
+
+Implementation Details:
+
+Block Management: Each memory block is managed using a header structure, which contains:
+size: The size of the memory block, including the header and the user payload.
+
+allocated: A flag indicating if the block is currently allocated (1) or free (0).
+
+Allocation Logic: The mymalloc function searches for the first available block that can accommodate the requested size. If a suitable block is found, it may be split into two, creating a new free block with any leftover space.
+
+Deallocation and Coalescing: The myfree function marks a block as free and attempts to merge it with adjacent free blocks to reduce fragmentation.
+
+Memory Leak Detection: A leak_checker function, registered using atexit(), runs at program termination to report any unreleased memory blocks.
+
+Performance Tests: The project has been validated using multiple performance tests to ensure efficient allocation and deallocation. These are located in the memgrind.c file
+
+Edge Cases: Tests include zero-size allocations, double-free attempts, and boundary allocations to ensure robustness.
 
 
-
-
-Test Plan
-
-
-
-
-
-
-Description of Test Program (including any arguments they may take),
-
-
-
-Desgin Notes (if we think they're worth mentioning),
+Reflection: Working on this project provided valuable insights into low-level memory management, highlighting the importance of efficient allocation strategies and the challenges of avoiding memory leaks. The hands-on experience with implementing custom memory allocation deepened my understanding of how standard library functions like malloc and free are built.

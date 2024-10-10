@@ -14,7 +14,7 @@
 #endif
 
 #define MEMSIZE 4096 // Total size of the memory
-#define HEADERSIZE 16 // Manually set the size of the header (adjusted based on our implementation)
+#define HEADERSIZE 8
 #define OBJECTS 64
 #define OBJSIZE (MEMSIZE / OBJECTS - HEADERSIZE) // Adjusted size to account for header overhead
 

@@ -31,5 +31,27 @@ Performance Tests: The project has been validated using multiple performance tes
 
 Edge Cases: Tests include zero-size allocations, double-free attempts, and boundary allocations to ensure robustness.
 
+Testing and Results:
+
+Testing Double-Free Behavior:
+
+When attempting to free() a pointer that has already been freed, the myfree function detects this condition and outputs an error message, then terminates the program. This behavior is intentional to prevent undefined behavior and memory corruption.
+Example error message: free: Double free or corruption (correctness_test.c:79).
+
+Testing Out-of-Bounds Free:
+
+If a free() is called with a pointer outside the managed heap, the function correctly identifies this and prints an error message without attempting to free invalid memory.
+Example output: free: Inappropriate pointer (correctness_test.c:79).
+This ensures that the allocator handles incorrect memory management gracefully.
+
+Leak Detection:
+
+During testing, any remaining allocated memory at program exit is detected and reported using the leak_checker function. For example:
+mymalloc: 40 bytes leaked in 1 objects.
+This indicates that one object of 40 bytes was not properly freed before program termination.
+
+Testing Large Allocations:
+
+The mymalloc function handles large allocation requests by attempting to find a suitably sized block. If the request exceeds the available space, it returns NULL and provides an error message. This behavior ensures that the allocator does not overrun the fixed heap size.
 
 Reflection: Working on this project provided valuable insights into low-level memory management, highlighting the importance of efficient allocation strategies and the challenges of avoiding memory leaks. The hands-on experience with implementing custom memory allocation deepened my understanding of how standard library functions like malloc and free are built.

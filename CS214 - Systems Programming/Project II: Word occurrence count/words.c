@@ -76,6 +76,6 @@ int main() {
 
 
     // Start by listing the contents of the "sample" directory
-    list_directory("sample");  // Replace "sample" with your starting directory
+    //list_directory("sample");  // Replace "sample" with your starting directory
     return 0;
 }

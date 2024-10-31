@@ -131,14 +131,12 @@ void add_word(const char *word) {
     }
 }
 
-int is_valid_character(char c, int in_word) {
-    return isalpha(c) || c == '\'' || (c == '-' && in_word);
-}
-
 void print_sorted_word_counts() {
     qsort(words, word_count, sizeof(WordCount), compare_counts);
     for (int i = 0; i < word_count; i++) {
-        printf("%s %d\n", words[i].word, words[i].count);
+        if (words[i].count > 0) {
+            printf("%s %d\n", words[i].word, words[i].count);
+        }
     }
 }
 
@@ -153,8 +151,37 @@ int compare_counts(const void *a, const void *b) {
 }
 
 void extract_words(const char *chunk) {
+    const char delimiters[] = " ,.!:;?\"0123456789"; // Expanded delimiters for more robustness
     char buffer[BUFFER_SIZE];
-    
+    int buffer_index = 0;
+    int in_word = 0;
+
+    for (int i = 0; chunk[i] != '\0'; i++) {
+        // Allow letters and apostrophes anywhere in the word
+        if (isalpha(chunk[i]) || chunk[i] == '\'') {
+            buffer[buffer_index++] = chunk[i];
+            in_word = 1;
+        }
+        // Allow hyphens between letters, treating it as part of the word
+        else if (chunk[i] == '-' && isalpha(chunk[i-1]) && isalpha(chunk[i+1])) {
+            buffer[buffer_index++] = chunk[i];
+        }
+        // Delimiters signify the end of a word
+        else {
+            if (in_word) {
+                buffer[buffer_index] = '\0'; // Null-terminate the word
+                add_word(buffer);           // Add the word to the count
+                buffer_index = 0;           // Reset buffer for next word
+                in_word = 0;
+            }
+        }
+    }
+
+    // Process the last word if the chunk ends with a valid character
+    if (in_word) {
+        buffer[buffer_index] = '\0';
+        add_word(buffer);
+    }
 }
 
 int main() {
@@ -162,11 +189,13 @@ int main() {
     const char *file_path = "foo.txt";
     const char *directory_path = "sample";
 
+    const char *file_path2 = "foo2.txt";
+
     // Process the file "foo"
-    process_file(file_path);
+    process_file(file_path2);
 
     // Process the directory "sample"
-    process_directory(directory_path);
+    //process_directory(directory_path);
 
     // Print sorted word counts at the end
     print_sorted_word_counts();

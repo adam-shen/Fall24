@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": false,
-      "cwd": ".",
-      "program": "build/Debug/outDebug",
+      "cwd": "/workspaces/Fall24/CS214 - Systems Programming/Project II: Word occurrence count",
+      "program": "/workspaces/Fall24/CS214 - Systems Programming/Project II: Word occurrence count/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

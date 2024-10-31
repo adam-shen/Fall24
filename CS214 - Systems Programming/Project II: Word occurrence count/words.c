@@ -1,20 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
-#include <unistd.h>
+#include <ctype.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #define BUFFER_SIZE 1024
+#define MAX_SIZE 10240  // Define a maximum size for the file_contents array
 
 // Function prototypes
-void process_file(const char *file_path);
-void process_directory(const char *path);
-//void add_word(const char word, WordCountword_counts, int size);
-int is_valid_character(char c);
-void extract_words(const chartext, WordCount word_counts, int size);
-void print_sorted_word_counts(WordCount *word_counts, int size);
+void process_file(const char *filename); //Done
+void process_directory(const char *path); //Done
+void add_word(const char *word); //Done
+void extract_words(const char *chunk);
+void print_sorted_word_counts(); //Done
+int compare_counts(const void *a, const void *b); //Done
+int is_valid_character(char c, int in_word); //Done
+
+char file_contents[MAX_SIZE];  // Define the array to store the file contents
 
 typedef struct {
     char word[50]; // Adjust size based on max word length
@@ -23,21 +28,42 @@ typedef struct {
 
 WordCount words[1000]; // Array of WordCount structs
 
+int word_count = 0; // Number of words in the array
 
+void print_file_contents() {
+    printf("%s", file_contents);
+}
 
-void process_file(const char *file_path) {
-    FILE *file = fopen(file_path, "r");
-    if (!file) {
-        perror("Failed to open file");
+void process_file(const char *filename) {
+    int fd = open(filename, O_RDONLY);
+    if (fd < 0) {
+        perror(filename);
         return;
     }
 
-    char buffer[BUFFER_SIZE];
-    while (fscanf(file, "%1023s", buffer) == 1) {
-        add_word(buffer);
+    char buffer[BUFFER_SIZE];  // Define the buffer array
+    int total_bytes = 0;  // Keep track of the total bytes read
+    int bytes_read;
+
+    while ((bytes_read = read(fd, buffer, sizeof(buffer) - 1)) > 0) {
+        buffer[bytes_read] = '\0';  // Null-terminate to treat as a string
+        if (total_bytes + bytes_read < MAX_SIZE) {
+            strncpy(file_contents + total_bytes, buffer, bytes_read);  // Copy to file_contents array
+            total_bytes += bytes_read;
+            extract_words(buffer);  // Pass the chunk to extract_words
+        } else {
+            // Handle the case where the array is not large enough
+            write(2, "Output array is too small\n", 26);
+            break;
+        }
     }
 
-    fclose(file);
+    if (bytes_read == -1) {
+        write(2, "Error reading file\n", 19);
+    }
+    printf("\n");
+
+    close(fd);
 }
 
 void process_directory(const char *path) {
@@ -89,6 +115,7 @@ void add_word(const char *word) {
     for (int i = 0; i < 1000; i++) {
         if (strcmp(words[i].word, word) == 0) { // If the word is already in the array, increment the count and return
             words[i].count++;
+            word_count++;
             return;
         }
     }
@@ -98,13 +125,51 @@ void add_word(const char *word) {
         if (words[i].count == 0) { // If the count is 0, the word is not in the array, therefore we add it and set count to 1
             strcpy(words[i].word, word);
             words[i].count = 1;
+            word_count++;
             return;
         }
     }
 }
 
-int main(int argc, char *argv[]) {
-    
-    return 0;
+int is_valid_character(char c, int in_word) {
+    return isalpha(c) || c == '\'' || (c == '-' && in_word);
+}
 
+void print_sorted_word_counts() {
+    qsort(words, word_count, sizeof(WordCount), compare_counts);
+    for (int i = 0; i < word_count; i++) {
+        printf("%s %d\n", words[i].word, words[i].count);
+    }
+}
+
+int compare_counts(const void *a, const void *b) {
+   WordCount *wordA = (WordCount *)a;
+   WordCount *wordB = (WordCount *)b;
+
+    if (wordB->count == wordA->count) {
+        return strcmp(wordA->word, wordB->word);
+    }
+    return wordB->count - wordA->count;
+}
+
+void extract_words(const char *chunk) {
+    char buffer[BUFFER_SIZE];
+    
+}
+
+int main() {
+    // Define the paths for file "foo" and directory "sample"
+    const char *file_path = "foo.txt";
+    const char *directory_path = "sample";
+
+    // Process the file "foo"
+    process_file(file_path);
+
+    // Process the directory "sample"
+    process_directory(directory_path);
+
+    // Print sorted word counts at the end
+    print_sorted_word_counts();
+
+    return 0;
 }

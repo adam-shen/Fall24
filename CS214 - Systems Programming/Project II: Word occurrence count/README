@@ -51,3 +51,17 @@ Nested files: alon.txt in sample and mar.txt in sample/more should also be proce
 Non-.txt file: nothing.html in sample/more should be ignored.
 
 Directory handling: The program should traverse Project II: Word occurrence count, enter sample, and sample/more, skipping any non-.txt files within these directories.
+
+Word Extraction and Punctuation Handling: Test complex cases of words and punctuation within each .txt file to ensure correct word extraction and counting. Example text cases used for testing include:
+
+Foo bar? Bar! Foo-bar baz--quux! ’oo? "Bar, bar." 
+Super23foo.spam eggs bacon spam ALexIsMySon hello-world hello-- -world a2z
+newLine
+These examples test:
+
+Simple Words (e.g., "foo", "bar").
+Words with Punctuation (e.g., "foo-bar", "baz--quux").
+Words with Numbers (e.g., "Super23foo").
+Words with Hyphens (e.g., "hello-world", "hello--").
+Boundary Cases like single letters or partial words (e.g., "’oo", "a2z").
+Each of these cases was handled correctly by the program, ensuring that words were accurately separated and counted even with varying punctuation and formatting.

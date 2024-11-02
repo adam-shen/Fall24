@@ -1,0 +1,53 @@
+Overview
+This program recursively reads through text files within a specified directory, extracts individual words, counts their occurrences, and prints a sorted list of words with their frequencies in descending order. It processes only .txt files within a directory and uses an array-based approach to store word counts.
+
+Design Notes
+Core Functionality
+The program is structured with specific functions to:
+
+Read Files: process_file() reads the contents of each .txt file into a buffer and passes it to the extract_words() function.
+
+Process Directories: process_directory() recursively traverses directories, only processing files with a .txt extension.
+
+Word Extraction and Counting: extract_words() identifies valid words, handling delimiters and special characters (like hyphens and apostrophes) and passes words to add_word() to record their occurrences.
+
+Sorting and Displaying: print_sorted_word_counts() sorts words by frequency (and alphabetically if frequencies match) and prints them.
+
+Special Cases
+The program handles the following special cases:
+
+Memory Limits: To manage large files, the file_contents array has a defined MAX_SIZE. If the file's size exceeds this limit, the program alerts the user.
+
+Word Delimiters: Non-alphabetic characters (numbers and punctuation) are treated as delimiters. Hyphens between letters and apostrophes are accepted within words.
+
+Recursive Directory Processing: The program skips system files like . and .. to avoid infinite recursion.
+
+Error Handling: Errors during file and directory access are reported to the user via standard error.
+
+Data Structures
+WordCount Array: Stores words and their counts using an array of WordCount structs. The array has a fixed size of 1000 entries.
+
+Sorting: The array is sorted using qsort() with a custom comparator to arrange words by frequency and then alphabetically.
+
+Testing Strategy
+Test Case: Multi-level Directory with Mixed File Types
+Description: Test that the program correctly traverses directories, identifies .txt files, and ignores non-.txt files. Verify that it recursively processes files in subdirectories and correctly skips files without the .txt extension.
+
+Directory Structure:
+
+- Project II: Word occurrence count
+  - foo.txt               # Should be processed
+  - foo2.txt              # Should be processed
+  - sample                # Folder that will be opened
+    - alon.txt            # Should be processed
+    - more                # Folder that will be opened
+      - mar.txt           # Should be processed
+      - nothing.html      # Should NOT be processed (non-.txt file)
+Expected Behavior
+Top-level files: foo.txt and foo2.txt should be processed and their word counts should be recorded.
+
+Nested files: alon.txt in sample and mar.txt in sample/more should also be processed.
+
+Non-.txt file: nothing.html in sample/more should be ignored.
+
+Directory handling: The program should traverse Project II: Word occurrence count, enter sample, and sample/more, skipping any non-.txt files within these directories.

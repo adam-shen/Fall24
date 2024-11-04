@@ -149,9 +149,9 @@ int compare_counts(const void *a, const void *b) {
     }
     return wordB->count - wordA->count;
 }
-
+/*
 void extract_words(const char *chunk) {
-    const char delimiters[] = " ,.!:;?\"0123456789"; // Expanded delimiters for more robustness
+    const char delimiters[] = ",.!:;?\"0123456789"; // Expanded delimiters for more robustness
     char buffer[BUFFER_SIZE];
     int buffer_index = 0;
     int in_word = 0;
@@ -183,21 +183,67 @@ void extract_words(const char *chunk) {
         add_word(buffer);
     }
 }
+*/
+void extract_words(const char *chunk) {
+    char buffer[BUFFER_SIZE];
+    int buffer_index = 0;
+    int in_word = 0;
 
-int main() {
-    // Define the paths for file "foo" and directory "sample"
-    const char *file_path = "foo.txt";
-    const char *directory_path = "sample";
+    for (int i = 0; chunk[i] != '\0'; i++) {
+        // Allow letters, apostrophes and hyphens as part of a word
+        if (isalpha(chunk[i]) || chunk[i] == '\'' || (chunk[i] == '-' && isalpha(chunk[i - 1]) && isalpha(chunk[i + 1]))) {
+            buffer[buffer_index++] = chunk[i];
+            in_word = 1;
+        } 
+        // A separator indicates the end of a word
+        else {
+            if (in_word) {
+                buffer[buffer_index] = '\0';// Null-terminate the word
+                add_word(buffer);           // Add the word to the count
+                buffer_index = 0;           // Reset buffer for next word
+                in_word = 0;
+            }
+        }
+    }
 
-    const char *file_path2 = "foo2.txt";
+    // Process the last word if the chunk ends with a valid character
+    if (in_word) {
+        buffer[buffer_index] = '\0';
+        add_word(buffer);
+    }
+}
 
-    // Process the file "foo"
-    process_file(file_path2);
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        write(2, "Usage: ./words <file_or_directory>...\n", 38);
+        return 1;
+    }
 
-    // Process the directory "sample"
-    //process_directory(directory_path);
+    for (int i = 1; i < argc; i++) {
+        struct stat path_stat;
+        if (stat(argv[i], &path_stat) == -1) {
+            perror("stat");
+            continue;
+        }
 
-    // Print sorted word counts at the end
+        if (S_ISDIR(path_stat.st_mode)) {
+            // If the argument is a directory, process it recursively
+            process_directory(argv[i]);
+        } else if (S_ISREG(path_stat.st_mode)) {
+            // If the argument is a regular file, process it directly
+            int fd = open(argv[i], O_RDONLY);
+            if (fd == -1) {
+                perror("open");
+                continue;
+            }
+            process_file(argv[i]);
+            close(fd);
+        } else {
+            write(2, "Skipping unsupported path\n", 26);
+        }
+    }
+
+    // Print the sorted word counts after processing all files and directories
     print_sorted_word_counts();
 
     return 0;

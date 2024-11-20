@@ -1,0 +1,90 @@
+Name: Adam Elshanawany
+netID: aoe14
+
+Name: Alex Yang
+netID: yy854
+
+Mysh - A Simple Custom Shell
+Mysh is a lightweight, custom shell implementation written in C. It provides basic shell functionality such as executing commands, handling input/output redirection, pipelines, and wildcard expansion, along with a set of built-in commands.
+
+Features
+Built-in Commands:
+
+cd: Change the current working directory.
+help: Display information about available built-in commands.
+exit: Exit the shell.
+which: Identify the location of an executable or built-in command.
+pwd: Print the current working directory.
+External Commands:
+
+Executes commands from the system's /usr/bin, /usr/local/bin, and /bin directories.
+Input/Output Redirection:
+
+Redirect input using < and output using >.
+Pipeline Support:
+
+Commands can be chained using | to create pipelines.
+Wildcard Expansion:
+
+Supports * for pattern matching and expands file paths accordingly.
+Interactive and Batch Modes:
+
+Interactive Mode: Type commands directly in the shell.
+Batch Mode: Execute commands from a script file.
+Installation
+Clone the repository or copy the source code into a file named mysh.c.
+Compile the code using gcc: gcc -o mysh mysh.c
+Run the shell:
+Interactive Mode: ./mysh
+Batch Mode: ./mysh <batch_file>
+Usage
+Interactive Mode
+Once launched, the shell will display a prompt (mysh>). Enter commands just as you would in any other shell.
+
+Example:
+
+mysh> pwd
+mysh> cd /path/to/directory
+mysh> ls | grep file
+Built-in Commands
+cd: Change directory.
+mysh> cd /path/to/directory
+help: List available built-in commands.
+mysh> help
+exit: Exit the shell.
+mysh> exit
+which: Locate an executable or a built-in command.
+mysh> which ls
+pwd: Print the current working directory.
+mysh> pwd
+Input/Output Redirection
+Redirect input:
+
+mysh> sort < input.txt
+Redirect output:
+
+mysh> ls > output.txt
+Pipelines
+Chain commands with pipes:
+
+mysh> ls | grep ".c"
+Wildcard Expansion
+Use * to match filenames:
+
+mysh> echo *.c
+File Structure
+Main Functions:
+
+main: Entry point for interactive or batch mode.
+mysh_loop: Core loop handling user input and command execution.
+Command Handling:
+
+mysh_execute: Determines if a command is built-in or external.
+mysh_launch: Executes external commands.
+handle_pipeline: Handles commands separated by |.
+handle_redirection: Manages < and > operators.
+Utility Functions:
+
+mysh_read_line_read: Reads input line-by-line.
+mysh_split_line: Tokenizes input commands.
+expand_wildcards: Expands file patterns like *.

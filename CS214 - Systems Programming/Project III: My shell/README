@@ -44,7 +44,7 @@ Once launched, the shell will display a prompt (mysh>). Enter commands just as y
 Example:
 
 mysh> pwd
-mysh> cd /path/to/directory
+mysh> cd /path/to/directory  //No single or double quotation marks needed
 mysh> ls | grep file
 Built-in Commands
 cd: Change directory.
@@ -88,3 +88,51 @@ Utility Functions:
 mysh_read_line_read: Reads input line-by-line.
 mysh_split_line: Tokenizes input commands.
 expand_wildcards: Expands file patterns like *.
+
+
+            Test Cases
+List Files in Directory
+
+Command: ls
+Expected Output: List of files and directories in the current directory.
+Pipeline with Sorting
+
+Command: ls | sort
+Expected Output: List of files and directories in sorted order.
+Redirect Output
+
+Command: ls > output.txt
+Expected Output: Creates a file named output.txt containing the list of files and directories in the current directory.
+Invalid Command
+
+Command: paspd
+Expected Output: mysh: paspd: command not found
+Change Directory to Parent
+
+Command: cd ..
+Expected Output: Moves to the parent directory. The command ls afterward confirms the contents of the parent directory.
+Help Command
+
+Command: help
+Expected Output:
+bash
+Copy code
+This is Mysh, a simple shell
+Built-in commands:
+  cd
+  help
+  exit
+  which
+  pwd
+Print Working Directory
+
+Command: pwd
+Expected Output: Prints the current working directory.
+Check Built-in Command with which
+
+Command: which pwd
+Expected Output: mysh: which: pwd: there is a shell built-in command
+Change Directory (Invalid Directory)
+
+Command: cd 'Project III: My shell'
+Expected Output: Mysh error at chdir: No such file or directory

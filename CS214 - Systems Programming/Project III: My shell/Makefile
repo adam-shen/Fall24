@@ -1,31 +1,12 @@
-# Compiler and flags
+# Makefile for mysh
+
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99 -g
+CFLAGS = -Wall -Wextra -std=c99 -g -D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700
 
-# Targets and source files
-TARGET = mysh
-SRC = mysh.c
-OBJ = $(SRC:.c=.o)
+all: mysh
 
-# Default target
-all: $(TARGET)
+mysh: mysh.c
+	$(CC) $(CFLAGS) -o mysh mysh.c
 
-# Linking the executable
-$(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ)
-
-# Compiling source files to object files
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# Cleaning build files
 clean:
-	rm -f $(OBJ) $(TARGET)
-
-# Testing the shell
-test: $(TARGET)
-	@echo "Running test cases..."
-	./$(TARGET) < test_script.txt
-
-# Rebuild everything
-rebuild: clean all
+	rm -f mysh

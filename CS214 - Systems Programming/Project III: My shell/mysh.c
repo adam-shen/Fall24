@@ -1,468 +1,517 @@
-#include <sys/wait.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <stdlib.h>
+// mysh.c
+#define _POSIX_C_SOURCE 200809L
+#define _XOPEN_SOURCE 700
+
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <dirent.h>
-#include <fnmatch.h> 
+#include <errno.h>
+#include <signal.h>
+#include <limits.h>
 
-#define MYSH_TOK_DELIM " \t\r\n"
-#define MYSH_TOK_BUFFER_SIZE 64
+#define MAX_TOKENS 128
+#define BUFFER_SIZE 1024
 
-int mysh_cd(char **args);
-int mysh_help(char **args);
-int mysh_exit(char **args);
-int mysh_which(char **args);
-int mysh_pwd();
+// Directories to search for executables
+const char *path_dirs[] = {"/usr/local/bin", "/usr/bin", "/bin", NULL};
 
-int mysh_builtin_nums();
-void handle_redirection(char **args);
-void handle_pipeline(char **args);
-char **expand_wildcards(char **args);
+// Function declarations
+void print_prompt();
+void execute_command(char *command_line, int interactive);
+void parse_command(char *command_line, char ***argv1, char ***argv2, char **infile, char **outfile, int *is_pipe);
+int is_builtin(char *cmd);
+void run_builtin(char **args);
+char *find_executable(char *cmd);
+void expand_wildcards(char *token, char ***args, int *argc);
+void handle_wildcard(char *pattern, char ***args, int *argc);
 
-char *builtin_cmd[] = {
-    "cd",
-    "help",
-    "exit",
-    "which",
-    "pwd"
-};
+int main(int argc, char *argv[]) {
+    int interactive = isatty(STDIN_FILENO);
+    FILE *input = stdin;
+    char buffer[BUFFER_SIZE];
+    ssize_t bytes_read;
+    int read_offset = 0;
 
-int (*builtin_func[])(char **) = {
-    &mysh_cd,
-    &mysh_help,
-    &mysh_exit,
-    &mysh_which,
-    &mysh_pwd
-};
-
-int mysh_cd(char **args) {
-    if (args[1] == NULL) {
-        perror("Mysh error at cd: missing argument");
-    } else {
-        // Join all arguments after 'cd' into a single path string
-        char path[1024] = "";
-        for (int i = 1; args[i] != NULL; i++) {
-            strcat(path, args[i]);
-            if (args[i + 1] != NULL) {
-                strcat(path, " ");
-            }
-        }
-        if (chdir(path) != 0) {
-            perror("Mysh error at chdir");
-        }
-    }
-    return 1;
-}
-
-int mysh_help(char **args) {
-    puts("This is Mysh, a simple shell");
-    puts("Built-in commands:");
-    for (int i = 0; i < mysh_builtin_nums(); i++) {
-        printf("  %s\n", builtin_cmd[i]);
-    }
-    return 1;
-}
-
-int mysh_exit(char **args) {
-    return 0;
-}
-
-int mysh_which(char **args) {
-    if (args[1] == NULL) {
-        fprintf(stderr, "mysh: which: missing argument\n");
-        return 1;
-    }
-
-     // Check if the command is a built-in command.
-    for (int i = 0; i < mysh_builtin_nums(); i++) {
-        if (strcmp(args[1], builtin_cmd[i]) == 0) {
-            fprintf(stderr, "mysh: which: %s: there is a shell built-in command\n", args[1]);
-            return 1;
-        }
-    }
-
-    char *path[] = {"/usr/local/bin", "/usr/bin", "/bin"};
-    for (int i = 0; i < 3; i++) {
-        char full_path[1024];
-        snprintf(full_path, sizeof(full_path), "%s/%s", path[i], args[1]);
-        if (access(full_path, X_OK) == 0) {
-            printf("%s\n", full_path);
-            return 1;
-        }
-    }
-    fprintf(stderr, "mysh: which: command not found\n");
-    return 1;
-}
-int mysh_pwd(){
-    char buffer[1024];
-    if (getcwd(buffer, sizeof(buffer)) != NULL) {
-        printf("%s\n", buffer);
-    } else {
-        perror("getcwd() error");
-    }
-    return 1;
-}
-
-int mysh_builtin_nums() {
-    return sizeof(builtin_cmd) / sizeof(builtin_cmd[0]);
-}
-
-#define READ_BUFFER_SIZE 1024
-
-char *mysh_read_line_read(FILE *input) {
-    int fd = fileno(input);  // Get the file descriptor from FILE*
-    if (fd == -1) {
-        perror("mysh: invalid file descriptor");
-        return NULL;
-    }
-
-    size_t buffer_size = READ_BUFFER_SIZE;
-    size_t position = 0;
-    char *buffer = malloc(buffer_size);
-    if (!buffer) {
-        fprintf(stderr, "mysh: allocation error\n");
+    // Check for too many arguments
+    if (argc > 2) {
+        fprintf(stderr, "Usage: %s [scriptfile]\n", argv[0]);
         exit(EXIT_FAILURE);
+    }
+
+    // Open script file if provided
+    if (argc == 2) {
+        input = fopen(argv[1], "r");
+        if (!input) {
+            perror("fopen");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if (interactive) {
+        printf("Welcome to my shell!\n");
+        print_prompt();
+        fflush(stdout);
     }
 
     while (1) {
-        char c;
-        ssize_t bytes_read = read(fd, &c, 1);
-        if (bytes_read == -1) {
-            perror("mysh: read error");
-            free(buffer);
-            return NULL;
-        } else if (bytes_read == 0) {
-            // EOF
-            if (position == 0) {
-                free(buffer);
-                return NULL;
-            }
-            break;
-        }
+        char command_line[BUFFER_SIZE];
+        int cmd_len = 0;
 
-        // If we encounter a newline, stop reading
-        if (c == '\n') {
-            break;
-        }
-
-        buffer[position++] = c;
-
-        // If buffer is full, resize it
-        if (position >= buffer_size) {
-            buffer_size += READ_BUFFER_SIZE;
-            char *new_buffer = realloc(buffer, buffer_size);
-            if (!new_buffer) {
-                fprintf(stderr, "mysh: allocation error\n");
-                free(buffer);
+        // Read input one character at a time using read()
+        while (1) {
+            bytes_read = read(fileno(input), buffer + read_offset, 1);
+            if (bytes_read == -1) {
+                perror("read");
                 exit(EXIT_FAILURE);
+            } else if (bytes_read == 0) {
+                // EOF
+                if (cmd_len > 0) {
+                    buffer[read_offset] = '\0';
+                    strcpy(command_line, buffer);
+                    execute_command(command_line, interactive);
+                }
+                goto exit_shell;
+            } else {
+                if (buffer[read_offset] == '\n') {
+                    buffer[read_offset] = '\0';
+                    strcpy(command_line, buffer);
+                    read_offset = 0;
+                    execute_command(command_line, interactive);
+                    break;
+                } else {
+                    read_offset++;
+                    cmd_len++;
+                    if (cmd_len >= BUFFER_SIZE - 1) {
+                        fprintf(stderr, "Command too long\n");
+                        exit(EXIT_FAILURE);
+                    }
+                }
             }
-            buffer = new_buffer;
+        }
+
+        if (interactive) {
+            print_prompt();
+            fflush(stdout);
         }
     }
 
-    // Null-terminate the string
-    buffer[position] = '\0';
+exit_shell:
+    if (interactive) {
+        printf("Exiting my shell.\n");
+    }
 
-    return buffer;
+    if (input != stdin) {
+        fclose(input);
+    }
+
+    return 0;
 }
 
-
-char **mysh_split_line(char *line) {
-    int buffer_size = MYSH_TOK_BUFFER_SIZE, position = 0;
-    char **tokens = malloc(buffer_size * sizeof(char *));
-    char *token;
-
-    if (!tokens) {
-        fprintf(stderr, "mysh: allocation error\n");
-        exit(EXIT_FAILURE);
-    }
-
-    token = strtok(line, MYSH_TOK_DELIM);
-    while (token != NULL) {
-        tokens[position++] = token;
-
-        if (position >= buffer_size) {
-            buffer_size += MYSH_TOK_BUFFER_SIZE;
-            tokens = realloc(tokens, buffer_size * sizeof(char *));
-            if (!tokens) {
-                fprintf(stderr, "mysh: allocation error\n");
-                exit(EXIT_FAILURE);
-            }
-        }
-
-        token = strtok(NULL, MYSH_TOK_DELIM);
-    }
-    tokens[position] = NULL;
-    return tokens;
+void print_prompt() {
+    printf("mysh> ");
 }
 
-void handle_redirection(char **args) {
-    int i = 0;
-    while (args[i] != NULL) {
-        if (strcmp(args[i], ">") == 0) {
-            int out_fd = open(args[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0640);
-            if (out_fd == -1) {
-                perror("mysh: cannot open output file");
-                return;
-            }
-            dup2(out_fd, STDOUT_FILENO);
-            close(out_fd);
-            args[i] = NULL;
-        } else if (strcmp(args[i], "<") == 0) {
-            int in_fd = open(args[i + 1], O_RDONLY);
-            if (in_fd == -1) {
-                perror("mysh: cannot open input file");
-                return;
-            }
-            dup2(in_fd, STDIN_FILENO);
-            close(in_fd);
-            args[i] = NULL;
-        }
-        i++;
-    }
-}
+void execute_command(char *command_line, int interactive) {
+    char **argv1 = NULL;
+    char **argv2 = NULL;
+    char *infile = NULL;
+    char *outfile = NULL;
+    int is_pipe = 0;
+    int status;
+    pid_t pid1, pid2;
 
-void handle_pipeline(char **args) {
-    int pipe_index = -1;
+    parse_command(command_line, &argv1, &argv2, &infile, &outfile, &is_pipe);
 
-    // Find the pipe operator in the arguments
-    for (int i = 0; args[i] != NULL; i++) {
-        if (strcmp(args[i], "|") == 0) {
-            pipe_index = i;
-            break;
-        }
-    }
-
-    if (pipe_index == -1) {
-        // No pipeline, let the caller handle it
+    if (argv1 == NULL) {
         return;
     }
 
-    args[pipe_index] = NULL; // Split the arguments at the pipe
-
-    int pipefd[2];
-    if (pipe(pipefd) == -1) {
-        perror("mysh: error creating pipe");
-        return;
-    }
-
-    pid_t pid1 = fork();
-    if (pid1 == 0) {
-        // First child process
-        dup2(pipefd[1], STDOUT_FILENO); // Redirect stdout to the write end of the pipe
-        close(pipefd[0]);              // Close unused read end of the pipe
-        close(pipefd[1]);              // Close write end after redirection
-        execvp(args[0], args);         // Execute the first command
-        perror("mysh: error at execvp"); // Exec failed
-        exit(EXIT_FAILURE);
-    }
-
-    pid_t pid2 = fork();
-    if (pid2 == 0) {
-        // Second child process
-        dup2(pipefd[0], STDIN_FILENO); // Redirect stdin to the read end of the pipe
-        close(pipefd[1]);              // Close unused write end of the pipe
-        close(pipefd[0]);              // Close read end after redirection
-        execvp(args[pipe_index + 1], &args[pipe_index + 1]); // Execute the second command
-        perror("mysh: error at execvp"); // Exec failed
-        exit(EXIT_FAILURE);
-    }
-
-    // Parent process
-    close(pipefd[0]); // Close both ends of the pipe
-    close(pipefd[1]);
-
-    // Wait for both child processes to finish
-    waitpid(pid1, NULL, 0);
-    waitpid(pid2, NULL, 0);
-}
-
-
-
-char **expand_wildcards(char **args) {
-    char **new_args = malloc(MYSH_TOK_BUFFER_SIZE * sizeof(char *));
-    if (!new_args) {
-        fprintf(stderr, "mysh: allocation error\n");
-        exit(EXIT_FAILURE);
-    }
-
-    int position = 0;
-    for (int i = 0; args[i] != NULL; i++) {
-        if (strchr(args[i], '*') != NULL) {
-            char *pattern = args[i];
-            char *dir_path = ".";
-            char *last_slash = strrchr(pattern, '/');
-
-            if (last_slash) {
-                *last_slash = '\0';
-                dir_path = pattern;
-                pattern = last_slash + 1;
+    if (is_builtin(argv1[0])) {
+        run_builtin(argv1);
+    } else {
+        if (is_pipe) {
+            int pipefd[2];
+            if (pipe(pipefd) == -1) {
+                perror("pipe");
+                goto cleanup;
             }
 
-            DIR *dir = opendir(dir_path);
-            if (!dir) {
-                perror("mysh: cannot open directory");
-                new_args[position++] = args[i];
-                continue;
+            pid1 = fork();
+            if (pid1 == -1) {
+                perror("fork");
+                goto cleanup;
+            } else if (pid1 == 0) {
+                // First child (left side of the pipe)
+                if (infile) {
+                    int fd_in = open(infile, O_RDONLY);
+                    if (fd_in == -1) {
+                        perror("open");
+                        _exit(EXIT_FAILURE);
+                    }
+                    dup2(fd_in, STDIN_FILENO);
+                    close(fd_in);
+                }
+                dup2(pipefd[1], STDOUT_FILENO);
+                close(pipefd[0]);
+                close(pipefd[1]);
+
+                char *exec_path = find_executable(argv1[0]);
+                if (exec_path) {
+                    execv(exec_path, argv1);
+                    perror("execv");
+                    free(exec_path);
+                } else {
+                    fprintf(stderr, "%s: command not found\n", argv1[0]);
+                }
+                _exit(EXIT_FAILURE);
             }
 
-            struct dirent *entry;
-            while ((entry = readdir(dir)) != NULL) {
-                if (fnmatch(pattern, entry->d_name, 0) == 0) {
-                    char full_path[1024];
-                    snprintf(full_path, sizeof(full_path), "%s/%s", dir_path, entry->d_name);
-                    new_args[position++] = strdup(full_path);
+            pid2 = fork();
+            if (pid2 == -1) {
+                perror("fork");
+                goto cleanup;
+            } else if (pid2 == 0) {
+                // Second child (right side of the pipe)
+                if (outfile) {
+                    int fd_out = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0640);
+                    if (fd_out == -1) {
+                        perror("open");
+                        _exit(EXIT_FAILURE);
+                    }
+                    dup2(fd_out, STDOUT_FILENO);
+                    close(fd_out);
+                }
+                dup2(pipefd[0], STDIN_FILENO);
+                close(pipefd[0]);
+                close(pipefd[1]);
+
+                char *exec_path = find_executable(argv2[0]);
+                if (exec_path) {
+                    execv(exec_path, argv2);
+                    perror("execv");
+                    free(exec_path);
+                } else {
+                    fprintf(stderr, "%s: command not found\n", argv2[0]);
+                }
+                _exit(EXIT_FAILURE);
+            }
+
+            // Parent process
+            close(pipefd[0]);
+            close(pipefd[1]);
+
+            int status1, status2;
+            waitpid(pid1, &status1, 0);
+            waitpid(pid2, &status2, 0);
+
+            // Check exit status of the last command
+            if (interactive) {
+                if (WIFEXITED(status2)) {
+                    int exit_code = WEXITSTATUS(status2);
+                    if (exit_code != 0) {
+                        printf("mysh: Command failed with code %d\n", exit_code);
+                    }
+                } else if (WIFSIGNALED(status2)) {
+                    int term_sig = WTERMSIG(status2);
+                    printf("mysh: Terminated by signal: %s\n", strsignal(term_sig));
                 }
             }
 
-            closedir(dir);
-            if (position == 0) {
-                new_args[position++] = args[i];
+        } else {
+            // Single command execution
+            pid1 = fork();
+            if (pid1 == -1) {
+                perror("fork");
+                goto cleanup;
+            } else if (pid1 == 0) {
+                // Child process
+                if (infile) {
+                    int fd_in = open(infile, O_RDONLY);
+                    if (fd_in == -1) {
+                        perror("open");
+                        _exit(EXIT_FAILURE);
+                    }
+                    dup2(fd_in, STDIN_FILENO);
+                    close(fd_in);
+                }
+                if (outfile) {
+                    int fd_out = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0640);
+                    if (fd_out == -1) {
+                        perror("open");
+                        _exit(EXIT_FAILURE);
+                    }
+                    dup2(fd_out, STDOUT_FILENO);
+                    close(fd_out);
+                }
+
+                char *exec_path = find_executable(argv1[0]);
+                if (exec_path) {
+                    execv(exec_path, argv1);
+                    perror("execv");
+                    free(exec_path);
+                } else {
+                    fprintf(stderr, "%s: command not found\n", argv1[0]);
+                }
+                _exit(EXIT_FAILURE);
+            }
+
+            // Parent process
+            waitpid(pid1, &status, 0);
+
+            if (interactive) {
+                if (WIFEXITED(status)) {
+                    int exit_code = WEXITSTATUS(status);
+                    if (exit_code != 0) {
+                        printf("mysh: Command failed with code %d\n", exit_code);
+                    }
+                } else if (WIFSIGNALED(status)) {
+                    int term_sig = WTERMSIG(status);
+                    printf("mysh: Terminated by signal: %s\n", strsignal(term_sig));
+                }
+            }
+        }
+    }
+
+cleanup:
+    // Free allocated memory
+    if (argv1) {
+        for (int i = 0; argv1[i]; i++) {
+            free(argv1[i]);
+        }
+        free(argv1);
+    }
+    if (argv2) {
+        for (int i = 0; argv2[i]; i++) {
+            free(argv2[i]);
+        }
+        free(argv2);
+    }
+    if (infile) {
+        free(infile);
+    }
+    if (outfile) {
+        free(outfile);
+    }
+}
+
+void parse_command(char *command_line, char ***argv1, char ***argv2, char **infile, char **outfile, int *is_pipe) {
+    char *tokens[MAX_TOKENS];
+    int ntokens = 0;
+    char *token = strtok(command_line, " \t");
+
+    while (token != NULL && ntokens < MAX_TOKENS - 1) {
+        tokens[ntokens++] = token;
+        token = strtok(NULL, " \t");
+    }
+    tokens[ntokens] = NULL;
+
+    int i = 0;
+    int argc1 = 0, argc2 = 0;
+    char **args1 = malloc(sizeof(char *) * MAX_TOKENS);
+    char **args2 = malloc(sizeof(char *) * MAX_TOKENS);
+    int parsing_cmd1 = 1;
+
+    *infile = NULL;
+    *outfile = NULL;
+    *is_pipe = 0;
+
+    while (i < ntokens) {
+        if (strcmp(tokens[i], "|") == 0) {
+            *is_pipe = 1;
+            parsing_cmd1 = 0;
+            i++;
+            continue;
+        } else if (strcmp(tokens[i], "<") == 0) {
+            i++;
+            if (i < ntokens) {
+                *infile = strdup(tokens[i++]);
+            } else {
+                fprintf(stderr, "mysh: Missing input file\n");
+                free(args1);
+                free(args2);
+                *argv1 = NULL;
+                return;
+            }
+        } else if (strcmp(tokens[i], ">") == 0) {
+            i++;
+            if (i < ntokens) {
+                *outfile = strdup(tokens[i++]);
+            } else {
+                fprintf(stderr, "mysh: Missing output file\n");
+                free(args1);
+                free(args2);
+                *argv1 = NULL;
+                return;
             }
         } else {
-            new_args[position++] = args[i];
+            if (parsing_cmd1) {
+                expand_wildcards(tokens[i], &args1, &argc1);
+            } else {
+                expand_wildcards(tokens[i], &args2, &argc2);
+            }
+            i++;
         }
+    }
 
-        if (position >= MYSH_TOK_BUFFER_SIZE) {
-            new_args = realloc(new_args, (position + MYSH_TOK_BUFFER_SIZE) * sizeof(char *));
-            if (!new_args) {
-                fprintf(stderr, "mysh: allocation error\n");
-                exit(EXIT_FAILURE);
+    args1[argc1] = NULL;
+    args2[argc2] = NULL;
+
+    if (argc1 == 0) {
+        free(args1);
+        free(args2);
+        *argv1 = NULL;
+        return;
+    }
+
+    *argv1 = args1;
+    if (*is_pipe) {
+        if (argc2 == 0) {
+            fprintf(stderr, "mysh: Missing command after pipe\n");
+            free(args1);
+            free(args2);
+            *argv1 = NULL;
+            return;
+        }
+        *argv2 = args2;
+    } else {
+        free(args2);
+        *argv2 = NULL;
+    }
+}
+
+int is_builtin(char *cmd) {
+    return (strcmp(cmd, "cd") == 0 ||
+            strcmp(cmd, "pwd") == 0 ||
+            strcmp(cmd, "which") == 0 ||
+            strcmp(cmd, "exit") == 0);
+}
+
+void run_builtin(char **args) {
+    if (strcmp(args[0], "cd") == 0) {
+        if (args[1] && !args[2]) {
+            if (chdir(args[1]) == -1) {
+                perror("cd");
+            }
+        } else {
+            fprintf(stderr, "cd: Wrong number of arguments\n");
+        }
+    } else if (strcmp(args[0], "pwd") == 0) {
+        char cwd[PATH_MAX];
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+            printf("%s\n", cwd);
+        } else {
+            perror("getcwd");
+        }
+    } else if (strcmp(args[0], "which") == 0) {
+        if (args[1] && !args[2]) {
+            if (is_builtin(args[1])) {
+                // Do not print anything
+            } else {
+                char *exec_path = find_executable(args[1]);
+                if (exec_path) {
+                    printf("%s\n", exec_path);
+                    free(exec_path);
+                }
+            }
+        } else {
+            // Do not print anything
+        }
+    } else if (strcmp(args[0], "exit") == 0) {
+        int i = 1;
+        while (args[i]) {
+            printf("%s ", args[i]);
+            i++;
+        }
+        if (i > 1) {
+            printf("\n");
+        }
+        exit(EXIT_SUCCESS);
+    }
+}
+
+char *find_executable(char *cmd) {
+    if (strchr(cmd, '/')) {
+        // Pathname
+        if (access(cmd, X_OK) == 0) {
+            return strdup(cmd);
+        } else {
+            return NULL;
+        }
+    } else {
+        // Search in predefined directories
+        for (int i = 0; path_dirs[i]; i++) {
+            char fullpath[PATH_MAX];
+            snprintf(fullpath, sizeof(fullpath), "%s/%s", path_dirs[i], cmd);
+            if (access(fullpath, X_OK) == 0) {
+                return strdup(fullpath);
             }
         }
     }
-
-    new_args[position] = NULL;
-    return new_args;
+    return NULL;
 }
 
-int mysh_launch(char **args) {
-    pid_t pid, wpid;
-    int status;
-
-    char *allowed_paths[] = {"/usr/local/bin", "/usr/bin", "/bin", NULL};
-    char full_path[1024];
-    int found = 0;
-
-    // Iterate through allowed directories to find the executable
-    for (int i = 0; allowed_paths[i] != NULL; i++) {
-        snprintf(full_path, sizeof(full_path), "%s/%s", allowed_paths[i], args[0]);
-        if (access(full_path, X_OK) == 0) {
-            found = 1;
-            break;
-        }
-    }
-
-    if (!found) {
-        fprintf(stderr, "mysh: %s: command not found\n", args[0]);
-        return 1;
-    }
-
-    pid = fork();
-    if (pid == 0) {
-        // Child process
-        handle_redirection(args);
-        if (execv(full_path, args) == -1) {
-            perror("mysh: execv error");
-        }
-        exit(EXIT_FAILURE);
-    } else if (pid < 0) {
-        // Fork failed
-        perror("mysh: fork error");
+void expand_wildcards(char *token, char ***args, int *argc) {
+    if (strchr(token, '*')) {
+        handle_wildcard(token, args, argc);
     } else {
-        // Parent process
-        do {
-            wpid = waitpid(pid, &status, WUNTRACED);
-        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-    }
-
-    return 1;
-}
-
-
-int mysh_execute(char **args) {
-    if (args[0] == NULL) return 1; // Empty command
-
-    // Check if the command includes a pipeline
-    for (int i = 0; args[i] != NULL; i++) {
-        if (strcmp(args[i], "|") == 0) {
-            handle_pipeline(args);
-            return 1; // Pipeline handled, no further execution needed
-        }
-    }
-
-    // Check for built-in commands
-    for (int i = 0; i < mysh_builtin_nums(); i++) {
-        if (strcmp(args[0], builtin_cmd[i]) == 0) {
-            return (*builtin_func[i])(args);
-        }
-    }
-
-    // Execute other commands
-    return mysh_launch(args);
-}
-
-
-void mysh_loop(FILE *input) {
-    char *line;
-    char **args;
-    int status;
-
-    if (isatty(fileno(input))) {
-        printf("Welcome to my shell!\n");
-    }
-
-    do {
-        
-        printf("mysh> ");
-        fflush(stdout);
-
-        line = mysh_read_line_read(input);  // Use the new read-based function
-        if (!line) break;
-        args = mysh_split_line(line);
-        
-        if (!args) {
-            free(line);
-            continue;
-        }
-        args = expand_wildcards(args);
-        if (!args) {
-            free(line);
-            continue;
-        }
-        status = mysh_execute(args);
-
-        free(line);
-        free(args);
-        
-    } while (status);
-
-    if (isatty(fileno(input))) {
-        printf("Exiting my shell.\n");
+        (*args)[(*argc)++] = strdup(token);
     }
 }
 
-
-int main(int argc, char *argv[]) {
-    if (argc == 2) {
-        int batch_fd = open(argv[1], O_RDONLY);
-        if (batch_fd == -1) {
-            perror("mysh: cannot open batch file");
-            return EXIT_FAILURE;
-        }
-        FILE *batch_file = fdopen(batch_fd, "r");
-        if (!batch_file) {
-            perror("mysh: fdopen failed");
-            close(batch_fd); 
-            return EXIT_FAILURE;
-        }
-        mysh_loop(batch_file);
-        fclose(batch_file);
+void handle_wildcard(char *pattern, char ***args, int *argc) {
+    char dir_path[PATH_MAX];
+    char *slash = strrchr(pattern, '/');
+    char *filename_pattern;
+    if (slash) {
+        // There is a directory path in pattern
+        size_t dir_len = slash - pattern;
+        strncpy(dir_path, pattern, dir_len);
+        dir_path[dir_len] = '\0';
+        filename_pattern = slash + 1;
     } else {
-        mysh_loop(stdin);
+        // No directory path
+        strcpy(dir_path, ".");
+        filename_pattern = pattern;
     }
-    return EXIT_SUCCESS;
+
+    DIR *dir = opendir(dir_path);
+    if (!dir) {
+        // No matches; add the pattern as-is
+        (*args)[(*argc)++] = strdup(pattern);
+        return;
+    }
+
+    struct dirent *entry;
+    int matched = 0;
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_name[0] == '.' && filename_pattern[0] != '.') {
+            continue; // Skip hidden files unless pattern starts with '.'
+        }
+
+        // Simple pattern matching
+        char *asterisk = strchr(filename_pattern, '*');
+        int len_before = asterisk - filename_pattern;
+        int len_after = strlen(filename_pattern) - len_before - 1;
+
+        if (strncmp(entry->d_name, filename_pattern, len_before) == 0 &&
+            strcmp(entry->d_name + strlen(entry->d_name) - len_after, asterisk + 1) == 0) {
+            char fullpath[PATH_MAX];
+            if (strcmp(dir_path, ".") == 0) {
+                snprintf(fullpath, PATH_MAX, "%s", entry->d_name);
+            } else {
+                snprintf(fullpath, PATH_MAX, "%s/%s", dir_path, entry->d_name);
+            }
+            (*args)[(*argc)++] = strdup(fullpath);
+            matched = 1;
+        }
+    }
+    closedir(dir);
+    if (!matched) {
+        (*args)[(*argc)++] = strdup(pattern);
+    }
 }

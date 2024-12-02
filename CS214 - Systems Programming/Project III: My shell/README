@@ -1,138 +1,358 @@
 Name: Adam Elshanawany
 netID: aoe14
 
-Name: Alex Yang
+Name: Alex Yang  
 netID: yy854
 
-Mysh - A Simple Custom Shell
+# Mysh - A Simple Custom Shell
+
 Mysh is a lightweight, custom shell implementation written in C. It provides basic shell functionality such as executing commands, handling input/output redirection, pipelines, and wildcard expansion, along with a set of built-in commands.
 
-Features
-Built-in Commands:
+## Features
 
-cd: Change the current working directory.
-help: Display information about available built-in commands.
-exit: Exit the shell.
-which: Identify the location of an executable or built-in command.
-pwd: Print the current working directory.
-External Commands:
+### Built-in Commands:
 
-Executes commands from the system's /usr/bin, /usr/local/bin, and /bin directories.
-Input/Output Redirection:
+- **cd**: Change the current working directory.
+- **help**: Display information about available built-in commands.
+- **exit**: Exit the shell.
+- **which**: Identify the location of an executable or built-in command.
+- **pwd**: Print the current working directory.
 
-Redirect input using < and output using >.
-Pipeline Support:
+### External Commands:
 
-Commands can be chained using | to create pipelines.
-Wildcard Expansion:
+- Executes commands from the system's `/usr/bin`, `/usr/local/bin`, and `/bin` directories.
 
-Supports * for pattern matching and expands file paths accordingly.
-Interactive and Batch Modes:
+### Input/Output Redirection:
 
-Interactive Mode: Type commands directly in the shell.
-Batch Mode: Execute commands from a script file.
-Installation
-Clone the repository or copy the source code into a file named mysh.c.
-Compile the code using gcc: gcc -o mysh mysh.c
-Run the shell:
-Interactive Mode: ./mysh
-Batch Mode: ./mysh <batch_file>
-Usage
-Interactive Mode
-Once launched, the shell will display a prompt (mysh>). Enter commands just as you would in any other shell.
+- Redirect input using `<` and output using `>`.
 
-Example:
+### Pipeline Support:
 
+- Commands can be chained using `|` to create pipelines.
+
+### Wildcard Expansion:
+
+- Supports `*` for pattern matching and expands file paths accordingly.
+
+### Interactive and Batch Modes:
+
+- **Interactive Mode**: Type commands directly in the shell.
+- **Batch Mode**: Execute commands from a script file.
+
+## Installation
+
+1. Clone the repository or copy the source code into a file named `mysh.c`.
+2. Compile the code using gcc: `gcc -o mysh mysh.c`
+3. Run the shell:
+  - **Interactive Mode**: `./mysh`
+  - **Batch Mode**: `./mysh <batch_file>`
+
+## Usage
+
+### Interactive Mode
+
+Once launched, the shell will display a prompt (`mysh>`). Enter commands just as you would in any other shell.
+
+**Example:**
+
+```sh
 mysh> pwd
-mysh> cd /path/to/directory  //No single or double quotation marks needed
+mysh> cd /path/to/directory  // No single or double quotation marks needed
 mysh> ls | grep file
-Built-in Commands
-cd: Change directory.
-mysh> cd /path/to/directory
-help: List available built-in commands.
-mysh> help
-exit: Exit the shell.
-mysh> exit
-which: Locate an executable or a built-in command.
-mysh> which ls
-pwd: Print the current working directory.
-mysh> pwd
-Input/Output Redirection
-Redirect input:
+```
 
-mysh> sort < input.txt
-Redirect output:
+### Built-in Commands
 
-mysh> ls > output.txt
-Pipelines
-Chain commands with pipes:
+- **cd**: Change directory.
+  ```sh
+  mysh> cd /path/to/directory
+  ```
+- **help**: List available built-in commands.
+  ```sh
+  mysh> help
+  ```
+- **exit**: Exit the shell.
+  ```sh
+  mysh> exit
+  ```
+- **which**: Locate an executable or a built-in command.
+  ```sh
+  mysh> which ls
+  ```
+- **pwd**: Print the current working directory.
+  ```sh
+  mysh> pwd
+  ```
 
-mysh> ls | grep ".c"
-Wildcard Expansion
-Use * to match filenames:
+### Input/Output Redirection
 
-mysh> echo *.c
-File Structure
-Main Functions:
+- Redirect input:
+  ```sh
+  mysh> sort < input.txt
+  ```
+- Redirect output:
+  ```sh
+  mysh> ls > output.txt
+  ```
 
-main: Entry point for interactive or batch mode.
-mysh_loop: Core loop handling user input and command execution.
-Command Handling:
+### Pipelines
 
-mysh_execute: Determines if a command is built-in or external.
-mysh_launch: Executes external commands.
-handle_pipeline: Handles commands separated by |.
-handle_redirection: Manages < and > operators.
-Utility Functions:
+- Chain commands with pipes:
+  ```sh
+  mysh> ls | grep ".c"
+  ```
 
-mysh_read_line_read: Reads input line-by-line.
-mysh_split_line: Tokenizes input commands.
-expand_wildcards: Expands file patterns like *.
+### Wildcard Expansion
 
+- Use `*` to match filenames:
+  ```sh
+  mysh> echo *.c
+  ```
 
-            Test Cases
-List Files in Directory
+## File Structure
 
-Command: ls
-Expected Output: List of files and directories in the current directory.
-Pipeline with Sorting
+### Main Functions:
 
-Command: ls | sort
-Expected Output: List of files and directories in sorted order.
-Redirect Output
+- **main**: Entry point for interactive or batch mode.
+- **mysh_loop**: Core loop handling user input and command execution.
 
-Command: ls > output.txt
-Expected Output: Creates a file named output.txt containing the list of files and directories in the current directory.
-Invalid Command
+### Command Handling:
 
-Command: paspd
-Expected Output: mysh: paspd: command not found
-Change Directory to Parent
+- **mysh_execute**: Determines if a command is built-in or external.
+- **mysh_launch**: Executes external commands.
+- **handle_pipeline**: Handles commands separated by `|`.
+- **handle_redirection**: Manages `<` and `>` operators.
 
-Command: cd ..
-Expected Output: Moves to the parent directory. The command ls afterward confirms the contents of the parent directory.
-Help Command
+### Utility Functions:
 
-Command: help
-Expected Output:
-bash
-Copy code
-This is Mysh, a simple shell
-Built-in commands:
-  cd
-  help
-  exit
-  which
-  pwd
-Print Working Directory
+- **mysh_read_line_read**: Reads input line-by-line.
+- **mysh_split_line**: Tokenizes input commands.
+- **expand_wildcards**: Expands file patterns like `*`.
 
-Command: pwd
-Expected Output: Prints the current working directory.
-Check Built-in Command with which
+## Test Cases
 
-Command: which pwd
-Expected Output: mysh: which: pwd: there is a shell built-in command
-Change Directory (Invalid Directory)
+### List Files in Directory
 
-Command: cd 'Project III: My shell'
-Expected Output: Mysh error at chdir: No such file or directory
+- **Basic Command:**
+  ```sh
+  Command: ls
+  Expected Output: List of files and directories in the current directory.
+  ```
+
+- **Pipeline with Sorting:**
+  ```sh
+  Command: ls | sort
+  Expected Output: List of files and directories in sorted order.
+  ```
+
+- **Hidden Files:**
+  ```sh
+  Command: ls -a
+  Expected Output: Includes hidden files (those starting with `.`).
+  ```
+
+- **Wildcard Match:**
+  ```sh
+  Command: ls *.txt
+  Expected Output: List of all `.txt` files in the current directory.
+  ```
+
+- **No Match for Wildcard:**
+  ```sh
+  Command: ls *.xyz
+  Expected Output: mysh: Command failed with code X, where X is the exit code of `ls`.
+  ```
+
+### Redirection
+
+- **Redirect Output:**
+  ```sh
+  Command: ls > output.txt
+  Expected Output: Creates a file named `output.txt` containing the list of files and directories in the current directory.
+  ```
+
+- **Redirect Input:**
+  ```sh
+  Command: cat < input.txt
+  Expected Output: Contents of `input.txt` displayed.
+  ```
+
+- **Redirect Both Input and Output:**
+  ```sh
+  Command: cat < input.txt > output.txt
+  Expected Output: Redirects input from `input.txt` and writes to `output.txt`.
+  ```
+
+- **Invalid File for Redirection:**
+  ```sh
+  Command: cat < non_existent.txt
+  Expected Output: Error message: `cat: non_existent.txt: No such file or directory`.
+  ```
+
+### Pipes
+
+- **Basic Pipeline:**
+  ```sh
+  Command: ls | wc
+  Expected Output: Word count of the output of `ls`.
+  ```
+
+- **Pipeline with Empty Command:**
+  ```sh
+  Command: ls |
+  Expected Output: mysh: Missing command after pipe.
+  ```
+
+- **Complex Pipeline:**
+  ```sh
+  Command: cat input.txt | sort | uniq
+  Expected Output: Sorted unique lines from `input.txt`.
+  ```
+
+### Commands
+
+- **Invalid Command:**
+  ```sh
+  Command: paspd
+  Expected Output: mysh: paspd: command not found.
+  ```
+
+- **Change Directory to Parent:**
+  ```sh
+  Command: cd ..
+  Expected Output: Moves to the parent directory. `ls` afterward confirms the contents of the parent directory.
+  ```
+
+- **Change Directory (Valid):**
+  ```sh
+  Command: cd valid_directory
+  Expected Output: Directory changes to `valid_directory`.
+  ```
+
+- **Change Directory (Invalid):**
+  ```sh
+  Command: cd non_existent_directory
+  Expected Output: cd: non_existent_directory: No such file or directory.
+  ```
+
+- **Print Working Directory:**
+  ```sh
+  Command: pwd
+  Expected Output: Prints the current working directory.
+  ```
+
+- **Run Executable by Path:**
+  ```sh
+  Command: ./my_executable
+  Expected Output: Executes the program at `./my_executable`.
+  ```
+
+- **Quoted Command:**
+  ```sh
+  Command: echo "Hello, world!"
+  Expected Output: Hello, world!.
+  ```
+
+### Built-in Commands
+
+- **Help Command:**
+  ```sh
+  Command: help
+  Expected Output:
+  This is Mysh, a simple shell
+  Built-in commands:
+   cd
+   help
+   exit
+   which
+   pwd
+  ```
+
+- **Check Built-in Command with which:**
+  ```sh
+  Command: which pwd
+  Expected Output: mysh: which: pwd: there is a shell built-in command.
+  ```
+
+- **Which for Executable:**
+  ```sh
+  Command: which ls
+  Expected Output: Full path to `ls` (e.g., `/usr/bin/ls`).
+  ```
+
+### Error Handling
+
+- **Invalid Input:**
+  ```sh
+  Command: ls <>
+  Expected Output: `ls: cannot access '<>': No such file or directory`.
+  ```
+
+- **Multiple Commands Combined Incorrectly:**
+  ```sh
+  Command: ls echo World
+  Expected Output: `ls: cannot access 'echo': No such file or directory`.
+  ```
+
+- **Extra Arguments to Built-ins:**
+  ```sh
+  Command: cd dir1 dir2
+  Expected Output: `cd: Wrong number of arguments`.
+  ```
+
+### Interactive and Batch Modes
+
+- **Interactive Mode:**
+
+  Start `mysh` without arguments.
+
+  **Expected Output:**
+  ```
+  Welcome to my shell!
+  Prompts after each command (`mysh>`).
+  Exiting my shell. when `exit` is issued.
+  ```
+
+- **Batch Mode (Input File):**
+  ```sh
+  Command: ./mysh input.txt
+  Expected Output: Executes all commands in `input.txt` without prompts or interactive messages.
+  ```
+
+- **Batch Mode (Piped Input):**
+  ```sh
+  Command: echo "ls" | ./mysh
+  Expected Output: Output of the `ls` command.
+  ```
+
+### Advanced Cases
+
+- **Command with Many Arguments:**
+  ```sh
+  Command: echo a b c d e f g h i j
+  Expected Output: a b c d e f g h i j.
+  ```
+
+- **Exit Command with Arguments:**
+  ```sh
+  Command: exit 42
+  Expected Output: Shell terminates, prints 42.
+  ```
+
+- **Simulated Signal Termination:**
+  ```sh
+  Command: kill -9 $$
+  Expected Output: Prints `Terminated by signal: KILL`.
+  ```
+
+- **Directory with Spaces:**
+  ```sh
+  Command: cd "Project III: My shell"
+  Expected Output: Successfully changes to the directory.
+  ```
+
+- **Nonexistent Built-in Command Redirection:**
+  ```sh
+  Command: which > out.txt
+  Expected Output: Redirection for built-ins is disallowed with an error.
+  ```
